@@ -1,0 +1,272 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Pillar 5 Email Spoofing Guard: checks email_verified == true in addition to admin doc
+    function isAdmin() {
+      return isSignedIn() && (
+        ('email' in request.auth.token &&
+         'email_verified' in request.auth.token &&
+         request.auth.token.email == 'Tribhuwannishad999@gmail.com' &&
+         request.auth.token.email_verified == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isOptionalString(data, field, maxLen) {
+      return !(field in data) || data[field] == null || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    // --- ENTITY VALIDATION BLUEPRINTS ---
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['userId', 'displayName', 'language', 'punyaScore', 'totalChants', 'sadhanaLevel', 'bestScore', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['userId', 'displayName', 'language', 'punyaScore', 'totalChants', 'sadhanaLevel', 'bestScore', 'createdAt', 'updatedAt']) &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             data.language in ['hi', 'en'] &&
+             data.punyaScore is int && data.punyaScore >= 0 && data.punyaScore <= 100000000 &&
+             data.totalChants is int && data.totalChants >= 0 && data.totalChants <= 100000000 &&
+             data.sadhanaLevel is int && data.sadhanaLevel >= 1 && data.sadhanaLevel <= 1000 &&
+             data.bestScore is int && data.bestScore >= 0 && data.bestScore <= 100000000 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidFavoriteItem(data) {
+      return data.keys().hasAll(['itemId', 'itemType', 'title', 'createdAt']) &&
+             data.keys().hasOnly(['itemId', 'itemType', 'title', 'createdAt']) &&
+             data.itemId is string && data.itemId.size() >= 1 && data.itemId.size() <= 128 &&
+             data.itemType in ['katha', 'bhajan', 'temple', 'festival'] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidDonationRecord(data) {
+      return data.keys().hasAll(['userId', 'donorName', 'amountInr', 'purpose', 'paymentApp', 'transactionRef', 'status', 'receiptNumber', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['userId', 'donorName', 'donorPhone', 'donorEmail', 'amountInr', 'purpose', 'paymentApp', 'transactionRef', 'status', 'receiptNumber', 'ownerNote', 'createdAt', 'updatedAt']) &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.donorName is string && data.donorName.size() >= 2 && data.donorName.size() <= 100 &&
+             isOptionalString(data, 'donorPhone', 20) &&
+             isOptionalString(data, 'donorEmail', 120) &&
+             data.amountInr is int && data.amountInr >= 1 && data.amountInr <= 10000000 &&
+             data.purpose is string && data.purpose.size() >= 2 && data.purpose.size() <= 120 &&
+             data.paymentApp in ['UPI', 'Google Pay', 'PhonePe', 'Paytm', 'Other UPI', 'Gateway'] &&
+             data.transactionRef is string && data.transactionRef.size() >= 4 && data.transactionRef.size() <= 64 &&
+             data.status in ['PENDING_VERIFICATION', 'VERIFIED_SUCCESS', 'FAILED', 'REFUNDED'] &&
+             data.receiptNumber is string && data.receiptNumber.size() >= 4 && data.receiptNumber.size() <= 64 &&
+             isOptionalString(data, 'ownerNote', 300) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidKathaVideo(data) {
+      return data.keys().hasAll(['title', 'description', 'category', 'videoUrl', 'duration', 'published', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['title', 'description', 'category', 'videoUrl', 'thumbnailUrl', 'duration', 'speaker', 'published', 'createdAt', 'updatedAt']) &&
+             data.title is string && data.title.size() >= 2 && data.title.size() <= 160 &&
+             data.description is string && data.description.size() >= 2 && data.description.size() <= 1500 &&
+             data.category is string && data.category.size() >= 2 && data.category.size() <= 80 &&
+             data.videoUrl is string && data.videoUrl.size() >= 5 && data.videoUrl.size() <= 500 &&
+             isOptionalString(data, 'thumbnailUrl', 500) &&
+             data.duration is string && data.duration.size() >= 1 && data.duration.size() <= 30 &&
+             isOptionalString(data, 'speaker', 120) &&
+             data.published is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidTempleEntry(data) {
+      return data.keys().hasAll(['name', 'location', 'deity', 'history', 'darshanTimings', 'published', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['name', 'location', 'deity', 'history', 'darshanTimings', 'imageUrl', 'videoUrl', 'published', 'createdAt', 'updatedAt']) &&
+             data.name is string && data.name.size() >= 2 && data.name.size() <= 160 &&
+             data.location is string && data.location.size() >= 2 && data.location.size() <= 160 &&
+             data.deity is string && data.deity.size() >= 2 && data.deity.size() <= 120 &&
+             data.history is string && data.history.size() >= 2 && data.history.size() <= 2000 &&
+             data.darshanTimings is string && data.darshanTimings.size() >= 2 && data.darshanTimings.size() <= 300 &&
+             isOptionalString(data, 'imageUrl', 500) &&
+             isOptionalString(data, 'videoUrl', 500) &&
+             data.published is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidFestivalEntry(data) {
+      return data.keys().hasAll(['name', 'dateLabel', 'significance', 'pujaVidhi', 'mantra', 'published', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['name', 'dateLabel', 'significance', 'pujaVidhi', 'mantra', 'kathaSummary', 'relatedVideoUrl', 'published', 'createdAt', 'updatedAt']) &&
+             data.name is string && data.name.size() >= 2 && data.name.size() <= 160 &&
+             data.dateLabel is string && data.dateLabel.size() >= 2 && data.dateLabel.size() <= 120 &&
+             data.significance is string && data.significance.size() >= 2 && data.significance.size() <= 1500 &&
+             data.pujaVidhi is string && data.pujaVidhi.size() >= 2 && data.pujaVidhi.size() <= 1500 &&
+             data.mantra is string && data.mantra.size() >= 2 && data.mantra.size() <= 300 &&
+             isOptionalString(data, 'kathaSummary', 1500) &&
+             isOptionalString(data, 'relatedVideoUrl', 500) &&
+             data.published is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidBhajanTrack(data) {
+      return data.keys().hasAll(['title', 'artist', 'category', 'durationLabel', 'published', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['title', 'artist', 'category', 'audioUrl', 'lyrics', 'durationLabel', 'published', 'createdAt', 'updatedAt']) &&
+             data.title is string && data.title.size() >= 2 && data.title.size() <= 160 &&
+             data.artist is string && data.artist.size() >= 1 && data.artist.size() <= 120 &&
+             data.category is string && data.category.size() >= 2 && data.category.size() <= 60 &&
+             isOptionalString(data, 'audioUrl', 500) &&
+             isOptionalString(data, 'lyrics', 4000) &&
+             data.durationLabel is string && data.durationLabel.size() >= 1 && data.durationLabel.size() <= 30 &&
+             data.published is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidMantraAudioMapping(data) {
+      return data.keys().hasAll(['mantraText', 'voiceLabel', 'customRecording', 'published', 'updatedAt']) &&
+             data.keys().hasOnly(['mantraText', 'audioUrl', 'voiceLabel', 'customRecording', 'published', 'updatedAt']) &&
+             data.mantraText is string && data.mantraText.size() >= 2 && data.mantraText.size() <= 120 &&
+             isOptionalString(data, 'audioUrl', 500) &&
+             data.voiceLabel is string && data.voiceLabel.size() >= 2 && data.voiceLabel.size() <= 120 &&
+             data.customRecording is bool &&
+             data.published is bool &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    // --- COLLECTION RULES ---
+
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && isValidId(adminUid) && request.auth.uid == adminUid;
+      allow list, create, update, delete: if false;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'language', 'punyaScore', 'totalChants', 'sadhanaLevel', 'bestScore', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /favorites/{favoriteId} {
+        allow get: if isOwner(userId) && isValidId(favoriteId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(favoriteId) && isValidFavoriteItem(incoming());
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(favoriteId);
+      }
+    }
+
+    match /donations/{donationId} {
+      allow get: if isSignedIn() && isValidId(donationId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      // Users can ONLY submit donations in PENDING_VERIFICATION state — never fake VERIFIED_SUCCESS
+      allow create: if isSignedIn() &&
+                       isValidId(donationId) &&
+                       isValidDonationRecord(incoming()) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().status == 'PENDING_VERIFICATION' &&
+                       !('ownerNote' in incoming());
+
+      // Only verified Owner/Admin can update donation verification status & ownerNote
+      allow update: if isAdmin() &&
+                       isValidId(donationId) &&
+                       isValidDonationRecord(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().amountInr == existing().amountInr &&
+                       incoming().transactionRef == existing().transactionRef &&
+                       incoming().receiptNumber == existing().receiptNumber &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'ownerNote', 'updatedAt']);
+
+      allow delete: if false;
+    }
+
+    match /kathas/{kathaId} {
+      allow get: if isSignedIn() && isValidId(kathaId) && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+      allow create: if isAdmin() && isValidId(kathaId) && isValidKathaVideo(incoming());
+      allow update: if isAdmin() && isValidId(kathaId) && isValidKathaVideo(incoming()) &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'videoUrl', 'thumbnailUrl', 'duration', 'speaker', 'published', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(kathaId);
+    }
+
+    match /temples/{templeId} {
+      allow get: if isSignedIn() && isValidId(templeId) && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+      allow create: if isAdmin() && isValidId(templeId) && isValidTempleEntry(incoming());
+      allow update: if isAdmin() && isValidId(templeId) && isValidTempleEntry(incoming()) &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'location', 'deity', 'history', 'darshanTimings', 'imageUrl', 'videoUrl', 'published', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(templeId);
+    }
+
+    match /festivals/{festivalId} {
+      allow get: if isSignedIn() && isValidId(festivalId) && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+      allow create: if isAdmin() && isValidId(festivalId) && isValidFestivalEntry(incoming());
+      allow update: if isAdmin() && isValidId(festivalId) && isValidFestivalEntry(incoming()) &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'dateLabel', 'significance', 'pujaVidhi', 'mantra', 'kathaSummary', 'relatedVideoUrl', 'published', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(festivalId);
+    }
+
+    match /bhajans/{bhajanId} {
+      allow get: if isSignedIn() && isValidId(bhajanId) && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+      allow create: if isAdmin() && isValidId(bhajanId) && isValidBhajanTrack(incoming());
+      allow update: if isAdmin() && isValidId(bhajanId) && isValidBhajanTrack(incoming()) &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['title', 'artist', 'category', 'audioUrl', 'lyrics', 'durationLabel', 'published', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(bhajanId);
+    }
+
+    match /mantra_audio/{mantraId} {
+      allow get: if isSignedIn() && isValidId(mantraId) && (existing().published == true || isAdmin());
+      allow list: if isSignedIn() && (existing().published == true || isAdmin());
+      allow create: if isAdmin() && isValidId(mantraId) && isValidMantraAudioMapping(incoming());
+      allow update: if isAdmin() && isValidId(mantraId) && isValidMantraAudioMapping(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['mantraText', 'audioUrl', 'voiceLabel', 'customRecording', 'published', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(mantraId);
+    }
+  }
+}

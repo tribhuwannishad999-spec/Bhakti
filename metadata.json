@@ -1,0 +1,6 @@
+{
+  "name": "Bhakti Darshan",
+  "description": "A Hindu devotional Android platform featuring the full-screen Mantra Bubble Game, AI Palmistry, AI Devotional Assistant, Dhanpatra Donations, Panchang, Rashifal, Katha Videos, Bhakti Music, Temples, Vrat, Festivals, and Owner Dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

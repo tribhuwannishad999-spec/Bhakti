@@ -1,0 +1,173 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Devotee profile and Mantra Bubble Game sadhana progress (no sensitive PII).",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the owner." },
+        "displayName": { "type": "string", "description": "Display name shown in profile." },
+        "language": { "type": "string", "enum": ["hi", "en"], "description": "Preferred UI language." },
+        "punyaScore": { "type": "integer", "description": "Cumulative Punya points earned." },
+        "totalChants": { "type": "integer", "description": "Total mantras chanted across sessions." },
+        "sadhanaLevel": { "type": "integer", "description": "Current Sadhana level." },
+        "bestScore": { "type": "integer", "description": "Best single-session Punya score." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on create." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": ["userId", "displayName", "language", "punyaScore", "totalChants", "sadhanaLevel", "bestScore", "createdAt", "updatedAt"]
+    },
+    "FavoriteItem": {
+      "title": "FavoriteItem",
+      "description": "User-saved favorite bhajan, katha, temple, or festival.",
+      "type": "object",
+      "properties": {
+        "itemId": { "type": "string", "description": "Target item document ID." },
+        "itemType": { "type": "string", "enum": ["katha", "bhajan", "temple", "festival"], "description": "Content type." },
+        "title": { "type": "string", "description": "Display title of the favorited item." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on create." }
+      },
+      "required": ["itemId", "itemType", "title", "createdAt"]
+    },
+    "DonationRecord": {
+      "title": "DonationRecord",
+      "description": "Dhanpatra donation record with owner verification lifecycle.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Donor Firebase Auth UID." },
+        "donorName": { "type": "string", "description": "Donor full name." },
+        "donorPhone": { "type": "string", "description": "Optional donor phone number." },
+        "donorEmail": { "type": "string", "description": "Optional donor email." },
+        "amountInr": { "type": "integer", "description": "Donation amount in INR." },
+        "purpose": { "type": "string", "description": "Donation purpose." },
+        "paymentApp": { "type": "string", "enum": ["UPI", "Google Pay", "PhonePe", "Paytm", "Other UPI", "Gateway"], "description": "Selected payment method." },
+        "transactionRef": { "type": "string", "description": "User-submitted UTR or payment gateway reference." },
+        "status": { "type": "string", "enum": ["PENDING_VERIFICATION", "VERIFIED_SUCCESS", "FAILED", "REFUNDED"], "description": "Verification status; users always create as PENDING_VERIFICATION." },
+        "receiptNumber": { "type": "string", "description": "Generated receipt identifier." },
+        "ownerNote": { "type": "string", "description": "Optional verification note added by owner." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on create." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": ["userId", "donorName", "amountInr", "purpose", "paymentApp", "transactionRef", "status", "receiptNumber", "createdAt", "updatedAt"]
+    },
+    "KathaVideo": {
+      "title": "KathaVideo",
+      "description": "Owner-published devotional katha video entry.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "duration": { "type": "string" },
+        "speaker": { "type": "string" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "description", "category", "videoUrl", "duration", "published", "createdAt", "updatedAt"]
+    },
+    "TempleEntry": {
+      "title": "TempleEntry",
+      "description": "Owner-published temple darshan entry.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "location": { "type": "string" },
+        "deity": { "type": "string" },
+        "history": { "type": "string" },
+        "darshanTimings": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "location", "deity", "history", "darshanTimings", "published", "createdAt", "updatedAt"]
+    },
+    "FestivalEntry": {
+      "title": "FestivalEntry",
+      "description": "Owner-published festival entry.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "dateLabel": { "type": "string" },
+        "significance": { "type": "string" },
+        "pujaVidhi": { "type": "string" },
+        "mantra": { "type": "string" },
+        "kathaSummary": { "type": "string" },
+        "relatedVideoUrl": { "type": "string" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "dateLabel", "significance", "pujaVidhi", "mantra", "published", "createdAt", "updatedAt"]
+    },
+    "BhajanTrack": {
+      "title": "BhajanTrack",
+      "description": "Owner-published devotional bhajan track.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "artist": { "type": "string" },
+        "category": { "type": "string" },
+        "audioUrl": { "type": "string" },
+        "lyrics": { "type": "string" },
+        "durationLabel": { "type": "string" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "artist", "category", "durationLabel", "published", "createdAt", "updatedAt"]
+    },
+    "MantraAudioMapping": {
+      "title": "MantraAudioMapping",
+      "description": "Owner-configured custom recording URL for one of the 10 game mantras.",
+      "type": "object",
+      "properties": {
+        "mantraText": { "type": "string" },
+        "audioUrl": { "type": "string" },
+        "voiceLabel": { "type": "string" },
+        "customRecording": { "type": "boolean" },
+        "published": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["mantraText", "voiceLabel", "customRecording", "published", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Devotee profile and Mantra Bubble Game progress."
+    },
+    "/users/{userId}/favorites/{favoriteId}": {
+      "schema": { "$ref": "#/entities/FavoriteItem" },
+      "description": "User-scoped favorites list."
+    },
+    "/donations/{donationId}": {
+      "schema": { "$ref": "#/entities/DonationRecord" },
+      "description": "Dhanpatra donation transactions and receipts."
+    },
+    "/kathas/{kathaId}": {
+      "schema": { "$ref": "#/entities/KathaVideo" },
+      "description": "Published devotional Katha videos managed by owner."
+    },
+    "/temples/{templeId}": {
+      "schema": { "$ref": "#/entities/TempleEntry" },
+      "description": "Published temple darshan entries managed by owner."
+    },
+    "/festivals/{festivalId}": {
+      "schema": { "$ref": "#/entities/FestivalEntry" },
+      "description": "Published Hindu festivals managed by owner."
+    },
+    "/bhajans/{bhajanId}": {
+      "schema": { "$ref": "#/entities/BhajanTrack" },
+      "description": "Published Bhakti music tracks managed by owner."
+    },
+    "/mantra_audio/{mantraId}": {
+      "schema": { "$ref": "#/entities/MantraAudioMapping" },
+      "description": "Custom owner-uploaded mantra audio mappings for the Bubble Game."
+    }
+  }
+}
